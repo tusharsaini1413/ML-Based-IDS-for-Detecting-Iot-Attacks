@@ -222,23 +222,6 @@ This thesis is honest about what it does not yet cover:
 Planned for the final thesis phase: cross-dataset validation, adversarial robustness, edge benchmarking, quantized XGBoost / compact 1D-CNN variants, and conference paper submission (IEEE INDICON / IEEE Access).
 
 ---
-
-## Citation
-
-If you use this work in your research, please cite:
-
-```bibtex
-@mastersthesis{saini2026iiot,
-  title  = {Multi-Class IoT Intrusion Detection with Explainable Machine Learning on the Edge-IIoT Dataset},
-  author = {Tushar Saini},
-  school = {[Your Institute Name]},
-  year   = {2026},
-  type   = {M.Tech Thesis}
-}
-```
-
----
-
 ## References
 
 1. Ferrag, M. A., et al. "Edge-IIoTset: A new comprehensive realistic cyber security dataset of IoT and IIoT applications for centralized and federated learning." *IEEE Access*, 2022.
@@ -252,9 +235,9 @@ If you use this work in your research, please cite:
 
 ## Author
 
-**Tushar Saini** &nbsp;·&nbsp; M.Tech (MCL2025010)
+**Tushar Saini** &nbsp;·&nbsp;
 📧 tushar.saini@your-domain.edu
-🔗 [LinkedIn](https://linkedin.com/in/your-handle) &nbsp;·&nbsp; [GitHub](https://github.com/tusharsaini)
+🔗 [LinkedIn](https://www.linkedin.com/in/tushar-saini-803844238/) &nbsp;·&nbsp; [GitHub](https://github.com/tusharsaini1413)
 
 ---
 
