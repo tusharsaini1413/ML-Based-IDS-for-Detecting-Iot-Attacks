@@ -1,4 +1,4 @@
-# Multi-Class IIoT Intrusion Detection with Explainable Machine Learning
+# ML-Based IDS for Detecting IoT Attacks
 
 > An interpretable, statistically-validated ML framework for detecting and classifying **15 attack categories** in Industrial IoT network traffic, with a novel use of **SHAP as a data leakage diagnostic**.
 
@@ -56,7 +56,7 @@ The main methodological contribution is **using SHAP as a validation tool rather
 | Uploading | 10,269 | MITM | 1,214 |
 | | | Fingerprinting | 1,001 |
 
-> Download the dataset from the [official IEEE DataPort link](https://ieee-dataport.org/documents/edge-iiotset-new-comprehensive-realistic-cyber-security-dataset-iot-and-iiot-applications) and place it under `data/raw/`.
+> **Note:** The Edge-IIoTset CSV is **not included** in this repository due to its size. Download it from the [official IEEE DataPort link](https://ieee-dataport.org/documents/edge-iiotset-new-comprehensive-realistic-cyber-security-dataset-iot-and-iiot-applications) and place `edge_iiot.csv` in the project root before running the scripts.
 
 ---
 
@@ -78,7 +78,111 @@ Output: 99.36% binary | 91.44% multi-class
 
 ---
 
+## Dataset Overview
+
+Class distribution across the 15 categories (Normal + 14 attack types):
+
+![Class Distribution](figures/01_class_distribution.png)
+
+The dataset is moderately imbalanced — Normal traffic dominates, while MITM and Fingerprinting are minority classes. This motivates the SMOTE oversampling step in the training pipeline.
+
+---
+
 ## Results
+
+### Binary Classification
+
+| Model | Accuracy | F1 | AUC |
+|---|---:|---:|---:|
+| **XGBoost + SMOTE** | **0.9936** | **0.9962** | 0.99+ |
+| XGBoost + RF-FS | 0.9932 | 0.9959 | 0.99+ |
+| Random Forest + RUS | 0.9931 | 0.9959 | 0.99+ |
+| Random Forest + SMOTE | 0.9930 | 0.9958 | 0.99+ |
+| XGBoost + PCA | 0.9888 | 0.9933 | 0.99+ |
+| SVM (RBF) | 0.9512 | 0.9716 | 0.97+ |
+
+![Model Comparison](figures/02_model_comparison_bars.png)
+
+All tree-based ensembles converge near 99.3%; SVM lags by ~4% due to linear-separability limits in the feature space.
+
+### Confusion Matrices (Binary)
+
+![Confusion Matrices](figures/03_confusion_matrices.png)
+
+### ROC Curves
+
+![ROC Curves](figures/04_roc_curves.png)
+
+### 5-Fold Cross-Validation Stability
+
+![CV Boxplot](figures/05_cv_boxplot.png)
+
+| Fold | 1 | 2 | 3 | 4 | 5 | **Mean ± Std** |
+|---|---:|---:|---:|---:|---:|---:|
+| Accuracy | 0.9931 | 0.9930 | 0.9921 | 0.9928 | 0.9929 | **0.9928 ± 0.0004** |
+
+A standard deviation of 4×10⁻⁴ across folds confirms the pipeline is statistically stable — performance is not an artifact of a particular train/test split.
+
+### Feature Importance
+
+![Feature Importance](figures/06_feature_importance.png)
+
+After dropping the 6 leaky features, importance is distributed across semantically meaningful TCP/UDP/MQTT fields — no single feature dominates.
+
+---
+
+## Explainability & Leakage Diagnosis (Novelty)
+
+The strongest methodological contribution of this work: **using SHAP not just for transparency but as a leakage diagnostic.**
+
+### Global SHAP importance
+
+![SHAP Summary](figures/07_shap_summary.png)
+
+![SHAP Bar](figures/08_shap_bar.png)
+
+After leakage correction, SHAP importance is distributed across multiple TCP and UDP features. No single feature dominates — the model is making decisions based on a balanced, semantically meaningful feature set.
+
+### Per-prediction SHAP force plot
+
+![SHAP Force](figures/09_shap_force.png)
+
+For any individual flagged flow, SHAP produces a per-feature contribution breakdown. This enables SOC analyst verification — every flagged flow comes with an explanation of *why* it was flagged.
+
+> **The leakage story in one sentence:** initial SHAP analysis revealed `dns.qry.name.len` with a mean |SHAP| value of 9.09 — over 7× the next feature — acting as a near-perfect label shortcut. Six such shortcut features were identified and removed, dropping accuracy from a suspect 100% to a defensible 99.36%.
+
+---
+
+## Multi-Class Results (15 Classes)
+
+| Metric | Value |
+|---|---:|
+| Overall accuracy | **91.44%** |
+| Macro F1 | 0.8976 |
+| Weighted F1 | 0.9147 |
+
+### Multi-class confusion matrix
+
+![Multiclass Confusion](figures/10_multiclass_confusion.png)
+
+### Per-class F1 scores
+
+![Per-class F1](figures/11_per_class_f1.png)
+
+DDoS variants and Normal traffic are classified near-perfectly. MITM and Fingerprinting (the smallest classes) remain the hardest — a known consequence of class imbalance that future work will address with Borderline-SMOTE or class-weighted losses.
+
+---
+
+## Comparison with State-of-the-Art
+
+| Study | Method | Binary Acc. | Multi-Class | CV | XAI |
+|---|---|---:|---|:---:|:---:|
+| Ferrag et al. (2022) | DT, RF, SVM ensemble | 96.0% | 5 classes | ✗ | ✗ |
+| Mohy-Eddine et al. (2023) | XGBoost | 98.7% | ✗ | ✗ | ✗ |
+| Aljuhani (2023) | DNN + ensemble | 99.1% | 7 classes | ✗ | ✗ |
+| Tareq et al. (2024) | CNN-LSTM hybrid | 99.3% | ✗ | ✗ | ✗ |
+| Friha et al. (2024) | Federated DL | — | 9 classes (92.4%) | ✓ | ✗ |
+| **This work** | **XGB + RF-FS + SHAP** | **99.36%** | **15 classes (91.44%)** | **✓** | **✓** |
 
 ### Binary Classification
 
@@ -123,30 +227,25 @@ A standard deviation of 4×10⁻⁴ across folds confirms the pipeline is statis
 ## Repository Structure
 
 ```
-iiot-ids-thesis/
-├── data/
-│   ├── raw/                    # Edge-IIoTset CSVs (not tracked)
-│   └── processed/              # cleaned, encoded data
-├── notebooks/
-│   ├── 01_eda.ipynb            # exploratory analysis
-│   ├── 02_preprocessing.ipynb  # cleaning + leakage detection
-│   ├── 03_binary_models.ipynb  # 6 pipeline variants
-│   ├── 04_multiclass.ipynb     # 15-class XGBoost
-│   ├── 05_shap_analysis.ipynb  # explainability + leakage diagnosis
-│   └── 06_hierarchical.ipynb   # two-stage deployment
-├── src/
-│   ├── preprocess.py           # 13-stage pipeline
-│   ├── train.py                # model training + CV
-│   ├── evaluate.py             # metrics + per-class F1
-│   ├── explain.py              # SHAP wrappers
-│   └── hierarchical.py         # binary → multi-class
-├── models/                     # saved .pkl models
-├── results/                    # figures, tables, logs
-├── thesis/                     # LaTeX source + final PDF
-├── requirements.txt
-├── LICENSE
+ML-Based-IDS-for-Detecting-IoT-Attacks/
+├── 00_check_data.py          # data inspection & sanity checks
+├── 01_train_save.py          # 13-stage preprocessing + binary model training
+├── 02_visualize.py           # confusion matrices, ROC curves, metric plots
+├── 03_shap.py                # SHAP explainability + leakage diagnosis
+├── 04_multiclass.py          # 15-class XGBoost training
+├── 05_fix_and_rerun.py       # post-leakage-fix pipeline rerun
+├── figures/                  # SHAP plots, confusion matrices, ROC curves
+├── results/                  # metrics CSVs, classification reports
+├── setup.sh                  # environment setup script
+├── run_all.sh                # end-to-end pipeline runner
+├── requirements.txt          # Python dependencies
 └── README.md
 ```
+
+> **Not tracked in this repo:**
+> - `edge_iiot.csv` — the dataset (download separately, see above)
+> - `models/` — trained `.pkl` files (regenerate by running `01_train_save.py`)
+> - `venv/` — virtual environment
 
 ---
 
@@ -154,8 +253,8 @@ iiot-ids-thesis/
 
 ```bash
 # Clone the repo
-git clone https://github.com/tusharsaini/iiot-ids-thesis.git
-cd iiot-ids-thesis
+git clone https://github.com/tusharsaini1413/ML-Based-IDS-for-Detecting-IoT-Attacks.git
+cd ML-Based-IDS-for-Detecting-IoT-Attacks
 
 # Create a virtual environment
 python -m venv venv
@@ -165,38 +264,61 @@ source venv/bin/activate     # on Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**Core dependencies:** `scikit-learn`, `xgboost`, `shap`, `imbalanced-learn`, `pandas`, `numpy`, `matplotlib`, `seaborn`, `jupyter`.
+Or use the included setup script:
+
+```bash
+bash setup.sh
+```
+
+**Core dependencies:** `scikit-learn`, `xgboost`, `shap`, `imbalanced-learn`, `pandas`, `numpy`, `matplotlib`, `seaborn`.
 
 ---
 
 ## Usage
 
-### Run the full pipeline end-to-end
+Make sure `edge_iiot.csv` is placed in the project root before running anything.
+
+### Option 1 — Run the entire pipeline
 
 ```bash
-python src/preprocess.py --input data/raw/Edge-IIoTset.csv --output data/processed/
-python src/train.py --config configs/xgb_smote.yaml
-python src/evaluate.py --model models/xgb_smote.pkl --test data/processed/test.csv
+bash run_all.sh
 ```
 
-### Reproduce SHAP leakage detection
+This sequentially executes all scripts and produces figures + results.
 
+### Option 2 — Run scripts individually
+
+**Inspect the raw dataset:**
 ```bash
-python src/explain.py --model models/xgb_baseline.pkl --top-k 15
-# Inspect output: a single dominant feature → likely shortcut
+python 00_check_data.py
 ```
 
-### Run multi-class classification
-
+**Train binary classifiers (6 pipeline variants) and save models:**
 ```bash
-python src/train.py --config configs/xgb_multiclass.yaml
+python 01_train_save.py
 ```
 
-### Hierarchical pipeline inference
-
+**Generate confusion matrices, ROC curves, and metric comparison plots:**
 ```bash
-python src/hierarchical.py --binary models/xgb_binary.pkl --multi models/xgb_multi.pkl --input new_flows.csv
+python 02_visualize.py
 ```
+
+**Run SHAP explainability and leakage diagnosis:**
+```bash
+python 03_shap.py
+```
+
+**Train the 15-class multi-class XGBoost model:**
+```bash
+python 04_multiclass.py
+```
+
+**Apply leakage fixes and rerun the pipeline:**
+```bash
+python 05_fix_and_rerun.py
+```
+
+All outputs are saved to `figures/` and `results/`.
 
 ---
 
@@ -205,7 +327,6 @@ python src/hierarchical.py --binary models/xgb_binary.pkl --multi models/xgb_mul
 - **Random seed:** `42` for all stochastic operations (split, SMOTE, model init)
 - **Hardware:** All experiments run CPU-only (MacBook Air M-series) — no GPU required
 - **Inference cost:** Classical ensemble models with 200 estimators, max_depth=6 — suitable for edge gateway deployment
-- All trained models are saved under `models/` for direct inference reuse
 
 ---
 
@@ -237,8 +358,7 @@ Planned for the final thesis phase: cross-dataset validation, adversarial robust
 ## Author
 
 **Tushar Saini** &nbsp;·&nbsp; M.Tech (MCL2025010)
-📧 tushar.saini@your-domain.edu
-🔗 [LinkedIn](https://linkedin.com/in/your-handle) &nbsp;·&nbsp; [GitHub](https://github.com/tusharsaini)
+🔗 [GitHub](https://github.com/tusharsaini1413)
 
 ---
 
