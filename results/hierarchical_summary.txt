@@ -1,0 +1,4 @@
+Flat multi-class accuracy      : 0.9144
+Hierarchical pipeline accuracy : 0.9145
+Macro F1                       : 0.8976
+Weighted F1                    : 0.9147
